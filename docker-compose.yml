@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongodb:
     image: mongo:latest
@@ -7,25 +5,31 @@ services:
     ports:
       - "27018:27017"
     volumes:
-      - mongo_data:/data/db
+      - ./init.js:/docker-entrypoint-initdb.d/init.js:ro
+    networks:
+      - amr-net
 
   math-engine:
     build: ./math-engine
     container_name: amr-math-engine
     ports:
       - "8000:8000"
+    networks:
+      - amr-net
 
   api-backend:
     build: ./api-backend
     container_name: amr-api-backend
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       - mongodb
       - math-engine
     environment:
       # O Java agora aponta para o nome do contêiner do Mongo
-      - SPRING_DATA_MONGODB_URI=mongodb://amr-mongodb:27017/amr_db
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/amr_database
+    networks:
+      - amr-net
 
   amr-frontend:
     build: ./amr-frontend
@@ -34,6 +38,12 @@ services:
       - "3000:80" # A porta 3000 da sua máquina vai acessar o Nginx (80)
     depends_on:
       - api-backend
+    networks:
+      - amr-net
 
 volumes:
   mongo_data:
+
+networks:
+  amr-net:
+    driver: bridge
