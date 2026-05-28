@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: amr-mongodb
+    ports:
+      - "27018:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  math-engine:
+    build: ./math-engine
+    container_name: amr-math-engine
+    ports:
+      - "8000:8000"
+
+  api-backend:
+    build: ./api-backend
+    container_name: amr-api-backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mongodb
+      - math-engine
+    environment:
+      # O Java agora aponta para o nome do contêiner do Mongo
+      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/amr_db
+
+  amr-frontend:
+    build: ./amr-frontend
+    container_name: amr-frontend
+    ports:
+      - "3000:80" # A porta 3000 da sua máquina vai acessar o Nginx (80)
+    depends_on:
+      - api-backend
+
+volumes:
+  mongo_data:
