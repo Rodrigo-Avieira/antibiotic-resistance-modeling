@@ -25,7 +25,7 @@ services:
       - math-engine
     environment:
       # O Java agora aponta para o nome do contêiner do Mongo
-      - SPRING_DATA_MONGODB_URI=mongodb://mongodb:27017/amr_db
+      - SPRING_DATA_MONGODB_URI=mongodb://amr-mongodb:27017/amr_db
 
   amr-frontend:
     build: ./amr-frontend
