@@ -5,41 +5,40 @@ from scipy.integrate import odeint
 
 app = FastAPI()
 
+# 1. Adicionamos as variáveis biológicas na recepção da API
 class SimulationData(BaseModel):
     initialBacterialLoad: float
     mutationRate: float
     treatmentDays: int
+    growthRate: float          # Novo
+    antibioticEfficacy: float  # Novo
 
-# Sistema de Equações Diferenciais
-def amr_model(y, t, mutation_rate):
+# 2. Atualizamos a EDO para não usar mais números fixos
+def amr_model(y, t, mutation_rate, growth_rate, antibiotic_efficacy):
     S, R = y
-    r = 1.0       # Taxa de crescimento populacional natural
-    K = 1e7       # Capacidade de carga do ambiente (limite de bactérias)
-    a = 1.5       # Taxa de mortalidade induzida pelo antibiótico (efeito em S)
+    K = 1e7 # Capacidade de carga
     
-    # Derivadas (Taxas de variação)
-    dSdt = r * S * (1 - (S + R) / K) - a * S - mutation_rate * S
-    dRdt = r * R * (1 - (S + R) / K) + mutation_rate * S
+    # Derivadas com as variáveis dinâmicas reais
+    dSdt = growth_rate * S * (1 - (S + R) / K) - antibiotic_efficacy * S - mutation_rate * S
+    dRdt = growth_rate * R * (1 - (S + R) / K) + mutation_rate * S
     
     return [dSdt, dRdt]
 
 @app.post("/calculate")
 def calculate_resistance(data: SimulationData):
     S0 = data.initialBacterialLoad
-    R0 = S0 * 0.001 # Assume-se que a infecção começa com 0.1% de bactérias mutantes
+    R0 = S0 * 0.001
     y0 = [S0, R0]
+
+    steps = data.treatmentDays * 10 
+    t = np.linspace(0, data.treatmentDays, steps + 1)
     
-    # Vetor de tempo (dias de tratamento)
-    t = np.linspace(0, data.treatmentDays, data.treatmentDays + 1)
+    solution = odeint(amr_model, y0, t, args=(data.mutationRate, data.growthRate, data.antibioticEfficacy))
     
-    # Resolve as EDOs
-    solution = odeint(amr_model, y0, t, args=(data.mutationRate,))
-    
-    # Formata a resposta para o frontend
     results = []
     for i in range(len(t)):
         results.append({
-            "day": int(t[i]),
+            "day": round(float(t[i]), 1), 
             "susceptible": max(0, round(float(solution[i, 0]), 2)),
             "resistant": max(0, round(float(solution[i, 1]), 2))
         })
